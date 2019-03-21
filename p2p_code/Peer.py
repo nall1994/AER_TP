@@ -17,6 +17,12 @@ class Peer:
     def peer_manager(self):
         #Gerenciar as tarefas do peer
         self.connect()
+        cml_thread = Thread(target=self.connection_maintainer_listener)
+        lc_thread = Thread(target=self.listen_connections)
+        mc_thread = Thread(target=self.maintain_connection)
+        lc_thread.start()
+        cml_thread.start()
+        mc_thread.start()
 
     # Função de conexão de um peer a 3 known_peers
     def connect(self):
@@ -70,6 +76,7 @@ class Peer:
 
     #Função que, periodicamente, troca mensagens com os seus known_peers com o objetivo de avaliar o estado da sua ligação
     def maintain_connection(self):
+        sleep(5)
         while(True):    
             sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
             receiving_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
@@ -89,7 +96,6 @@ class Peer:
                 if(not(self.connection_checker())):
                     print('regain connection')
                     self.connect()
-            sleep(5)
 
     #Função que verifica se a conexão está bem estabelecida
     def connection_checker(self):
