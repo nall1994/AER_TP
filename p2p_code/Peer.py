@@ -16,7 +16,8 @@ class Peer:
     # Função que gere o funcionamento de um Peer
     def peer_manager(self):
         #Gerenciar as tarefas do peer
-        self.connect()
+        while True:
+         if self.connect(): break
         cml_thread = Thread(target=self.connection_maintainer_listener)
         lc_thread = Thread(target=self.listen_connections)
         mc_thread = Thread(target=self.maintain_connection)
@@ -32,6 +33,7 @@ class Peer:
             sock.setsockopt(socket.IPPROTO_IP,socket.IP_MULTICAST_TTL,i)
             sock.sendto("P2PConnectionMANET".encode('utf8'),(self.MCAST_GROUP,self.MCAST_PORT))
             out_ttl = False
+            all = False
             # Iniciar o ciclo para escuta de respostas
             while self.peers_connected < self.needed_peers:
                 receiving_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)   
@@ -57,12 +59,16 @@ class Peer:
                         break
                 if out_ttl: break
             if self.peers_connected == self.needed_peers:
+                all = True
                 break
         self.connections = {}
         sock.close()
         receiving_socket.close()
         for kp in self.known_peers:
             self.connections[kp] = True
+        if all:
+            return True
+        else: return False
 
     #Função que escuta por mensagens de avaliação de conexão e responde conforme.
     def connection_maintainer_listener(self):
