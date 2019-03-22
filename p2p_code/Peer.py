@@ -67,7 +67,7 @@ class Peer:
     #Função que escuta por mensagens de avaliação de conexão e responde conforme.
     def connection_maintainer_listener(self):
         recv_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
-        recv_socket.bind('',10003)
+        recv_socket.bind(('',10003))
         while(True):
             message,address = recv_socket.recvfrom(4096)
             if message.decode('utf8') == "ALIVE":
@@ -76,8 +76,8 @@ class Peer:
 
     #Função que, periodicamente, troca mensagens com os seus known_peers com o objetivo de avaliar o estado da sua ligação
     def maintain_connection(self):
-        sleep(5)
-        while(True):    
+        while(True): 
+            sleep(5)   
             sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
             receiving_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
             receiving_socket.settimeout(0.5)
@@ -92,7 +92,6 @@ class Peer:
                 if msg == "YES":
                     self.connections[address[0]] = True
             except socket.timeout:
-                print('verify')
                 if(not(self.connection_checker())):
                     print('regain connection')
                     self.connect()
