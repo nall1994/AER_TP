@@ -17,7 +17,7 @@ class Peer:
     def peer_manager(self):
         #Gerenciar as tarefas do peer
         while True:
-         if self.connect(): break
+            if self.connect(): break
         cml_thread = Thread(target=self.connection_maintainer_listener)
         lc_thread = Thread(target=self.listen_connections)
         mc_thread = Thread(target=self.maintain_connection)
@@ -45,6 +45,7 @@ class Peer:
                         message, address = receiving_socket.recvfrom(4096)
                         msg = message.decode('utf8')
                         parts = msg.split(';')
+                        print(parts[0])
                         if(parts[0] == 'ConnectionOK'):
                             self.peers_connected = self.peers_connected + 1
                             self.known_peers.append(address[0]) #coletar o IP de quem enviou a resposta
