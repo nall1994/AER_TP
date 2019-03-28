@@ -130,10 +130,16 @@ class Peer:
             msg,address = receiving_socket.recvfrom(4096)
             if msg.decode('utf8') == 'P2PConnectionMANET':
                 add_sp = address[0]
-                sending_socket.sendto("ConnectionOK".encode('utf8'),(add_sp,10002))
-                print('accepted connection from: ' + str(add_sp))
-                self.known_peers.append(add_sp)
+                if not self.belongs(add_sp):
+                    sending_socket.sendto("ConnectionOK".encode('utf8'),(add_sp,10002))
+                    print('accepted connection from: ' + str(add_sp))
+                    self.known_peers.append(add_sp)
 
+    def belongs(self,address):
+        for kp in self.known_peers:
+            if kp == address:
+                return True
+        return False
     #Função que deverá pedir um ficheiro para download ao peer respetivo
     def request_files(self):
         return ''
