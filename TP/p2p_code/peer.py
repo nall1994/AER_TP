@@ -83,7 +83,7 @@ class Peer:
         while(True): 
             sleep(5)
             print(self.known_peers)
-            if len(self.known_peers < 3): self.connect()   
+            if len(self.known_peers) < 3: self.connect()   
             sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
             receiving_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
             receiving_socket.settimeout(0.5)
