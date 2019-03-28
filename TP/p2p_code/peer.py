@@ -16,8 +16,7 @@ class Peer:
     # Função que gere o funcionamento de um Peer
     def peer_manager(self):
         #Gerenciar as tarefas do peer
-        while True:
-            if self.connect(): break
+        self.connect()
         cml_thread = Thread(target=self.connection_maintainer_listener)
         lc_thread = Thread(target=self.listen_connections)
         mc_thread = Thread(target=self.maintain_connection)
@@ -50,6 +49,7 @@ class Peer:
                             self.peers_connected = self.peers_connected + 1
                             self.known_peers.append(address[0]) #coletar o IP de quem enviou a resposta
                             #Esta parte de coleta de ips conhecidos de quem enviou será necessária??
+                            print ('received connection from: ' + str(address[0]))
                             for x in range(1,len(parts)):
                                 self.known_peers.append(parts[x]) #coletar IPS de outros peers conhecidos
                             if self.peers_connected == self.needed_peers:
@@ -67,9 +67,6 @@ class Peer:
         receiving_socket.close()
         for kp in self.known_peers:
             self.connections[kp] = True
-        if all:
-            return True
-        else: return False
 
     #Função que escuta por mensagens de avaliação de conexão e responde conforme.
     def connection_maintainer_listener(self):
@@ -84,7 +81,9 @@ class Peer:
     #Função que, periodicamente, troca mensagens com os seus known_peers com o objetivo de avaliar o estado da sua ligação
     def maintain_connection(self):
         while(True): 
-            sleep(5)   
+            sleep(5)
+            print(self.known_peers)
+            if len(self.known_peers < 3): self.connect()   
             sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
             receiving_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
             receiving_socket.settimeout(0.5)
@@ -132,6 +131,8 @@ class Peer:
             if msg.decode('utf8') == 'P2PConnectionMANET':
                 add_sp = address[0]
                 sending_socket.sendto("ConnectionOK".encode('utf8'),(add_sp,10002))
+                print('accepted connection from: ' + str(add_sp))
+                self.known_peers.append(add_sp)
 
     #Função que deverá pedir um ficheiro para download ao peer respetivo
     def request_files(self):
