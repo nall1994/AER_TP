@@ -13,6 +13,7 @@ node n1 {
     iconcoords {257.0 112.0}
     labelcoords {257.0 144.0}
     interface-peer {eth0 n7}
+    services {OSPFv3MDR zebra DefaultMulticastRoute DefaultRoute IPForward}
 }
 
 node n2 {
@@ -27,9 +28,10 @@ node n2 {
 	!
     }
     canvas c1
-    iconcoords {176.0 213.5}
-    labelcoords {176.0 245.5}
+    iconcoords {233.0 216.5}
+    labelcoords {233.0 248.5}
     interface-peer {eth0 n7}
+    services {OSPFv3MDR zebra DefaultMulticastRoute DefaultRoute IPForward}
 }
 
 node n3 {
@@ -47,6 +49,7 @@ node n3 {
     iconcoords {252.5 361.5}
     labelcoords {252.5 393.5}
     interface-peer {eth0 n7}
+    services {OSPFv3MDR zebra DefaultMulticastRoute DefaultRoute IPForward}
 }
 
 node n4 {
@@ -64,6 +67,7 @@ node n4 {
     iconcoords {466.0 362.0}
     labelcoords {466.0 394.0}
     interface-peer {eth0 n7}
+    services {OSPFv3MDR zebra DefaultMulticastRoute DefaultRoute IPForward}
 }
 
 node n5 {
@@ -81,6 +85,7 @@ node n5 {
     iconcoords {498.5 214.5}
     labelcoords {498.5 246.5}
     interface-peer {eth0 n7}
+    services {OSPFv3MDR zebra DefaultMulticastRoute DefaultRoute IPForward}
 }
 
 node n6 {
@@ -98,6 +103,7 @@ node n6 {
     iconcoords {425.5 109.0}
     labelcoords {425.5 141.0}
     interface-peer {eth0 n7}
+    services {OSPFv3MDR zebra DefaultMulticastRoute DefaultRoute IPForward}
 }
 
 node n7 {

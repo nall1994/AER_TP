@@ -16,6 +16,7 @@ class Peer:
     # Função que gere o funcionamento de um Peer
     def peer_manager(self):
         #Gerenciar as tarefas do peer
+        self.IP = socket.gethostbyname(socket.gethostname())
         self.connect()
         cml_thread = Thread(target=self.connection_maintainer_listener)
         lc_thread = Thread(target=self.listen_connections)
@@ -49,7 +50,6 @@ class Peer:
                             self.peers_connected = self.peers_connected + 1
                             self.known_peers.append(address[0]) #coletar o IP de quem enviou a resposta
                             #Esta parte de coleta de ips conhecidos de quem enviou será necessária??
-                            print ('received connection from: ' + str(address[0]))
                             for x in range(1,len(parts)):
                                 self.known_peers.append(parts[x]) #coletar IPS de outros peers conhecidos
                             if self.peers_connected == self.needed_peers:
@@ -128,18 +128,22 @@ class Peer:
         receiving_socket.setsockopt(socket.IPPROTO_IP,socket.IP_ADD_MEMBERSHIP,mreq)
         while(True):
             msg,address = receiving_socket.recvfrom(4096)
+
             if msg.decode('utf8') == 'P2PConnectionMANET':
+                print('Received connection request from:')
+                print(address)
                 add_sp = address[0]
                 if not self.belongs(add_sp):
                     sending_socket.sendto("ConnectionOK".encode('utf8'),(add_sp,10002))
-                    print('accepted connection from: ' + str(add_sp))
                     self.known_peers.append(add_sp)
 
     def belongs(self,address):
+        ok = False
         for kp in self.known_peers:
             if kp == address:
-                return True
-        return False
+                ok = True
+        if address == self.IP: ok = True
+        return ok
     #Função que deverá pedir um ficheiro para download ao peer respetivo
     def request_files(self):
         return ''
