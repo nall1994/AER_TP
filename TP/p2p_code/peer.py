@@ -118,7 +118,8 @@ class Peer:
         lock = Lock()
         lock.acquire()
         try:
-            for key,value in self.connections.items():
+            i = self.connections.items()
+            for key,value in i:
                 if not(value):
                     ok = False
                     self.peers_connected = self.peers_connected - 1
