@@ -28,6 +28,7 @@ class Peer:
 
     # Função de conexão de um peer a 3 known_peers
     def connect(self):
+        # NÃO ESTÁ A FAZER OS TTLS TODOS. SÓ FAZ PARA OS VIZINHOS
         for i in range(1,self.max_ttl + 1):
             # Criar uma socket e enviar pedido de conexão para os vizinhos a distância i
             sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
