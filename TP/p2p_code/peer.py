@@ -18,6 +18,7 @@ class Peer:
     def peer_manager(self):
         #Gerenciar as tarefas do peer
         self.IP = socket.gethostbyname(socket.gethostname())
+        print(self.IP)
         self.connect()
         cml_thread = Thread(target=self.connection_maintainer_listener)
         lc_thread = Thread(target=self.listen_connections)
@@ -30,39 +31,33 @@ class Peer:
     def connect(self):
         # NÃO ESTÁ A FAZER OS TTLS TODOS. SÓ FAZ PARA OS VIZINHOS
         for i in range(1,self.max_ttl + 1):
+            print(i)
             # Criar uma socket e enviar pedido de conexão para os vizinhos a distância i
             sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
             sock.setsockopt(socket.IPPROTO_IP,socket.IP_MULTICAST_TTL,i)
             sock.sendto("P2PConnectionMANET".encode('utf8'),(self.MCAST_GROUP,self.MCAST_PORT))
-            out_ttl = False
-            all = False
             # Iniciar o ciclo para escuta de respostas
-            while self.peers_connected < self.needed_peers:
-                receiving_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)   
-                receiving_socket.settimeout(0.1*i) #timeout de 100ms multiplicado pelo ttl atual
-                receiving_socket.bind(('',10002))
+            receiving_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)   
+            receiving_socket.settimeout(0.1*i) #timeout de 100ms multiplicado pelo ttl atual
+            receiving_socket.bind(('',10002))
 
-                while(True):
-                    try:
-                        message, address = receiving_socket.recvfrom(4096)
-                        msg = message.decode('utf8')
-                        parts = msg.split(';')
-                        print(parts[0])
-                        if(parts[0] == 'ConnectionOK'):
-                            self.peers_connected = self.peers_connected + 1
-                            self.known_peers.append(address[0]) #coletar o IP de quem enviou a resposta
-                            #Esta parte de coleta de ips conhecidos de quem enviou será necessária??
-                            for x in range(1,len(parts)):
-                                self.known_peers.append(parts[x]) #coletar IPS de outros peers conhecidos
-                            if self.peers_connected == self.needed_peers:
-                                out_ttl = True
-                                break
-                    except socket.timeout:
-                        out_ttl = True
-                        break
-                if out_ttl: break
+            while(True):
+                try:
+                    message, address = receiving_socket.recvfrom(4096)
+                    msg = message.decode('utf8')
+                    parts = msg.split(';')
+                    print(parts[0])
+                    if(parts[0] == 'ConnectionOK'):
+                        self.peers_connected = self.peers_connected + 1
+                        if not self.belongs(address[0]):
+                            self.known_peers.append(address[0])
+                        for x in range(1,len(parts)):
+                            self.known_peers.append(parts[x]) #coletar IPS de outros peers conhecidos
+                        if self.peers_connected == self.needed_peers:
+                            break
+                except socket.timeout:
+                    break
             if self.peers_connected == self.needed_peers:
-                all = True
                 break
         self.connections = {}
         sock.close()
