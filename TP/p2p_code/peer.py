@@ -2,6 +2,7 @@ import socket
 import struct
 from time import sleep
 from threading import Thread
+from threading import Lock
 
 class Peer:
 
@@ -88,15 +89,24 @@ class Peer:
             receiving_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
             receiving_socket.settimeout(0.5)
             receiving_socket.bind(('',10004))
-            for known_peer in self.known_peers:
-                self.connections[known_peer] = False
-                sock.sendto("ALIVE".encode('utf8'),(known_peer,10003))
+            lock = Lock()
+            lock.acquire()
+            try:
+                for known_peer in self.known_peers:
+                    self.connections[known_peer] = False
+                    sock.sendto("ALIVE".encode('utf8'),(known_peer,10003))
+            finally:
+                lock.release()
     
             try:
                 message, address = receiving_socket.recvfrom(4096)
                 msg = message.decode('utf8')
                 if msg == "YES":
-                    self.connections[address[0]] = True
+                    lock.acquire()
+                    try:
+                        self.connections[address[0]] = True
+                    finally:
+                        lock.release()
             except socket.timeout:
                 if(not(self.connection_checker())):
                     print('regain connection')
@@ -105,11 +115,16 @@ class Peer:
     #Função que verifica se a conexão está bem estabelecida
     def connection_checker(self):
         ok = True
-        for key,value in self.connections.items():
-            if not(value):
-                ok = False
-                self.peers_connected = self.peers_connected - 1
-                del self.connections[key]
+        lock = Lock()
+        lock.acquire()
+        try:
+            for key,value in self.connections.items():
+                if not(value):
+                    ok = False
+                    self.peers_connected = self.peers_connected - 1
+                    del self.connections[key]
+        finally:
+            lock.release()
         if(not(ok)):
             print('not ok')
             return False
