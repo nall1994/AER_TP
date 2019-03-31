@@ -11,7 +11,7 @@ class Peer:
         self.MCAST_PORT = 10000
         self.peers_connected = 0
         self.needed_peers = 3
-        self.max_ttl = 5
+        self.max_ttl = 3
         self.known_peers = []
     
     # Função que gere o funcionamento de um Peer
@@ -31,7 +31,6 @@ class Peer:
     def connect(self):
         # NÃO ESTÁ A FAZER OS TTLS TODOS. SÓ FAZ PARA OS VIZINHOS
         for i in range(1,self.max_ttl + 1):
-            print(i)
             # Criar uma socket e enviar pedido de conexão para os vizinhos a distância i
             sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
             sock.setsockopt(socket.IPPROTO_IP,socket.IP_MULTICAST_TTL,i)
@@ -77,6 +76,18 @@ class Peer:
 
     #Função que, periodicamente, troca mensagens com os seus known_peers com o objetivo de avaliar o estado da sua ligação
     def maintain_connection(self):
+        # Alterar a forma de manutenção da conexão:
+        # Nesta fase, cada peer também deve enviar informação atualizada dos ficheiros que tem e conhece.
+        # - Um peer envia aos seus peers conhecidos mensagens alive apenas.
+        # - Um peer deve manter um dicionário que associa um known_peer ao número de vezes que
+        #tentou receber um ALIVE desse peer mas não recebeu. Se esse número chegar a 3 é assumido que 
+        #a conexão com esse peer foi perdida.
+        # Isto deve ser feito da seguinte forma:
+        # De 5 em 5 segundos o peer envia para todos os seus known_peers a mensagem ALIVE.
+        # De 5 em 5 segundos (ver como pôr isto temporalmente para que as mensagens sejam sempre recebidas)
+        # incrementa uma falha a cada known_peer.
+        #um peer verifica as mensagens que recebe. Ao receber uma mensagem, atualiza o nº de falhas desse peer para 0..
+        # Se o peer tiver 3 falhas entrar em fase de conexão novamente para tentar procurar outro peer.
         while(True): 
             sleep(5)
             print(self.known_peers)
@@ -129,6 +140,9 @@ class Peer:
 
     #Função que escuta por pedidos de ficheiro
     def listen_requests(self):
+        # Os ficheiros devem ser inseridos na rede pelo peer. Nesta fase podemos inserir manualmente os nomes.
+        # escutar por pedidos de ficheiro e enviá-los se os tiver. responder com o endereço que o tem se conhecer.
+        # Responder que não conhece caso não tenha conhecimento (ou não responder de todo).
         return ''
 
     def listen_connections(self):
@@ -158,4 +172,6 @@ class Peer:
         return ok
     #Função que deverá pedir um ficheiro para download ao peer respetivo
     def request_files(self):
+        # Pedir um conteúdo por nome. Consultar a tabela que é mantida para verificar se este peer sabe quem possui esse ficheiro.
+        # Se não conhecer , enviar mensagem multicast com pedido de endereço para o ficheiro
         return ''
