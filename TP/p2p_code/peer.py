@@ -82,8 +82,8 @@ class Peer:
                     checked[address[0]] = True
                     peer = self.connections[address[0]]
                     print(peer)
-                    peer.alive = True
-                    peer.tries = 0
+                    peer["alive"] = True
+                    peer["tries"] = 0
                     self.connections[address[0]] = peer
 
             except socket.timeout:
