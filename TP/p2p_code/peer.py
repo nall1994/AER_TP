@@ -36,7 +36,8 @@ class Peer:
             sock.setsockopt(socket.IPPROTO_IP,socket.IP_MULTICAST_TTL,i)
             sock.sendto("P2PConnectionMANET".encode('utf8'),(self.MCAST_GROUP,self.MCAST_PORT))
             # Iniciar o ciclo para escuta de respostas
-            receiving_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)   
+            receiving_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
+            receiving_socket.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)   
             receiving_socket.settimeout(0.1*i) #timeout de 100ms multiplicado pelo ttl atual
             receiving_socket.bind(('',10002))
 
