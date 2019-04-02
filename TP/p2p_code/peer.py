@@ -62,6 +62,8 @@ class Peer:
         self.connections = {}
         sock.close()
         receiving_socket.close()
+        print('CONNECTED NOW')
+        print(connected_now)
         for kp in connected_now:
             print(kp)  
             self.connections[kp] = {'alive':True, 'tries': 0}
