@@ -95,12 +95,17 @@ class Peer:
                         if self.connections[kp]["tries"] == 3:
                             print ("Disconnecting peer: " + str(kp))
                             del self.connections[kp]
-                            del self.known_peers[kp]
+                            self.deleteKnownPeer(kp)
                             del checked[kp]
         
                 if len(self.known_peers) < self.needed_peers:
                     self.connect()
-                
+
+    def deleteKnownPeer(self,kp):
+        for i in range(0,len(self.known_peers)):
+            if self.known_peers[i] == kp:
+                del self.known_peers[i]
+                break
 
     #Função que, periodicamente, troca mensagens com os seus known_peers com o objetivo de avaliar o estado da sua ligação
     def maintain_connection(self):
