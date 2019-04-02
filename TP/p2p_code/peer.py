@@ -80,8 +80,10 @@ class Peer:
                 if message.decode('utf8') == "ALIVE":
                     print('ALIVE message received from: ' + str(address[0]))
                     checked[address[0]] = True
-                    self.connections[address[0]].alive = True
-                    self.connections[address[0]].tries = 0
+                    peer = self.connections[address[0]]
+                    peer.alive = True
+                    peer.tries = 0
+                    self.connections[address[0]] = peer
 
             except socket.timeout:
                 for kp in self.known_peers:
