@@ -13,6 +13,7 @@ class Peer:
         self.peers_connected = 0
         self.needed_peers = 3
         self.max_ttl = 3
+        self.out = False
         self.known_peers = []
         self.connections = {}
     
@@ -31,8 +32,9 @@ class Peer:
         try:
             mainmenu_thread.start()
             while(True):
-                pass
-        except SystemExit():
+                if self.out:
+                    raise SystemExit()
+        except SystemExit:
             sys.exit("Manually exiting P2P network.")
 
     # Função de conexão de um peer a 3 known_peers
@@ -198,8 +200,6 @@ class Peer:
             except ValueError:
                 print("\n")
                 print("The choice has to be a number from 1 to 6.")
-            except SystemExit:
-                raise SystemExit()
     
     def conn_peers(self):
         print("- KNOWN PEERS -")
@@ -228,4 +228,4 @@ class Peer:
         return ''
 
     def p2p_exit(self):
-        raise SystemExit()
+        self.out = True
