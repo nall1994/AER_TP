@@ -81,6 +81,7 @@ class Peer:
                     print('ALIVE message received from: ' + str(address[0]))
                     checked[address[0]] = True
                     peer = self.connections[address[0]]
+                    print(peer)
                     peer.alive = True
                     peer.tries = 0
                     self.connections[address[0]] = peer
