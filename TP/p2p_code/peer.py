@@ -29,6 +29,7 @@ class Peer:
 
     # Função de conexão de um peer a 3 known_peers
     def connect(self):
+        connected_now = []
         # NÃO ESTÁ A FAZER OS TTLS TODOS. SÓ FAZ PARA OS VIZINHOS
         for i in range(1,self.max_ttl + 1):
             # Criar uma socket e enviar pedido de conexão para os vizinhos a distância i
@@ -51,8 +52,7 @@ class Peer:
                         self.peers_connected = self.peers_connected + 1
                         if not self.belongs(address[0]):
                             self.known_peers.append(address[0])
-                        for x in range(1,len(parts)):
-                            self.known_peers.append(parts[x]) #coletar IPS de outros peers conhecidos
+                            connected_now.append(address[0])
                         if self.peers_connected == self.needed_peers:
                             break
                 except socket.timeout:
@@ -62,7 +62,7 @@ class Peer:
         self.connections = {}
         sock.close()
         receiving_socket.close()
-        for kp in self.known_peers:
+        for kp in connected_now:  
             self.connections[kp] = {'alive':True, 'tries': 0}
 
     #Função que escuta por mensagens de avaliação de conexão e responde conforme.
@@ -86,7 +86,7 @@ class Peer:
             except socket.timeout:
                 for kp in self.known_peers:
                     if not checked[kp]:
-                        self.connections[kp]["tries"] += 1
+                        self.connections[kp]["tries"] = self.connections[kp]["tries"] + 1
                         print('another try')
                         print(self.connections[kp]["tries"])
                         if self.connections[kp]["tries"] == 3:
