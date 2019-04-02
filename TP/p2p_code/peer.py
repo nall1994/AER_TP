@@ -31,9 +31,10 @@ class Peer:
         try:
             mainmenu_thread.start()
         except SystemExit:
-            lc_thread._stop()
-            mc_thread._stop()
-            cml_thread._stop()
+            print('EXITING')
+            lc_thread.join()
+            mc_thread.join()
+            cml_thread.join()
             sys.exit()
 
     # Função de conexão de um peer a 3 known_peers
