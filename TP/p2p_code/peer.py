@@ -31,6 +31,7 @@ class Peer:
         try:
             mainmenu_thread.start()
         except SystemExit:
+            print('system exit 2!')
             sys.exit("Manually exiting P2P network.")
 
     # Função de conexão de um peer a 3 known_peers
@@ -197,6 +198,7 @@ class Peer:
                 print("\n")
                 print("The choice has to be a number from 1 to 6.")
             except SystemExit:
+                print('system exit 1!')
                 raise SystemExit()
     
     def conn_peers(self):
@@ -226,4 +228,5 @@ class Peer:
         return ''
 
     def p2p_exit(self):
+        print('system exit!')
         raise SystemExit()
