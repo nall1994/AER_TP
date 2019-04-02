@@ -99,16 +99,6 @@ class Peer:
     def maintain_connection(self):
         # Alterar a forma de manutenção da conexão:
         # Nesta fase, cada peer também deve enviar informação atualizada dos ficheiros que tem e conhece.
-        # - Um peer envia aos seus peers conhecidos mensagens alive apenas.
-        # - Um peer deve manter um dicionário que associa um known_peer ao número de vezes que
-        #tentou receber um ALIVE desse peer mas não recebeu. Se esse número chegar a 3 é assumido que 
-        #a conexão com esse peer foi perdida.
-        # Isto deve ser feito da seguinte forma:
-        # De 5 em 5 segundos o peer envia para todos os seus known_peers a mensagem ALIVE.
-        # De 5 em 5 segundos (ver como pôr isto temporalmente para que as mensagens sejam sempre recebidas)
-        # incrementa uma falha a cada known_peer.
-        #um peer verifica as mensagens que recebe. Ao receber uma mensagem, atualiza o nº de falhas desse peer para 0..
-        # Se o peer tiver 3 falhas entrar em fase de conexão novamente para tentar procurar outro peer.
         while(True): 
             sleep(5)
             print(self.known_peers)
@@ -184,6 +174,7 @@ class Peer:
                 if not self.belongs(add_sp):
                     sending_socket.sendto("ConnectionOK".encode('utf8'),(add_sp,10002))
                     self.known_peers.append(add_sp)
+                    self.connections[add_sp] = {'alive':True, 'tries':0}
 
     def belongs(self,address):
         ok = False
