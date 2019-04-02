@@ -87,6 +87,8 @@ class Peer:
                 for kp in self.known_peers:
                     if not checked[kp]:
                         self.connections[kp]["tries"] += 1
+                        print('another try')
+                        print(self.connections[kp]["tries"])
                         if self.connections[kp]["tries"] == 3:
                             print ("Disconnecting peer: " + str(kp))
                             del self.connections[kp]
