@@ -48,7 +48,6 @@ class Peer:
                     message, address = receiving_socket.recvfrom(4096)
                     msg = message.decode('utf8')
                     parts = msg.split(';')
-                    print(parts[0])
                     if(parts[0] == 'ConnectionOK'):
                         self.peers_connected = self.peers_connected + 1
                         if not self.belongs(address[0]):
@@ -62,8 +61,6 @@ class Peer:
                 break
         sock.close()
         receiving_socket.close()
-        print('CONNECTED NOW')
-        print(connected_now)
         for kp in connected_now:
             print(kp)  
             self.connections[kp] = {'alive':True, 'tries': 0}
@@ -90,8 +87,7 @@ class Peer:
                 for kp in self.known_peers:
                     if not checked[kp]:
                         self.connections[kp]["tries"] = self.connections[kp]["tries"] + 1
-                        print('another try')
-                        print(self.connections[kp]["tries"])
+                        print(str(self.connections[kp]["tries"]) + " ALIVE message failed from: " + str(kp) + ".")
                         if self.connections[kp]["tries"] == 3:
                             print ("Disconnecting peer: " + str(kp))
                             del self.connections[kp]
@@ -127,40 +123,6 @@ class Peer:
                     sock.sendto("ALIVE".encode('utf8'),(known_peer,10003))
             finally:
                 lock.release()
-            '''
-            try:
-                message, address = receiving_socket.recvfrom(4096)
-                msg = message.decode('utf8')
-                if msg == "YES":
-                    lock.acquire()
-                    try:
-                        self.connections[address[0]] = True
-                    finally:
-                        lock.release()
-            except socket.timeout:
-                if(not(self.connection_checker())):
-                    print('regain connection')
-                    self.connect()
-            '''
-
-    #Função que verifica se a conexão está bem estabelecida
-    def connection_checker(self):
-        ok = True
-        lock = Lock()
-        lock.acquire()
-        try:
-            i = self.connections.items()
-            for key,value in i:
-                if not(value):
-                    ok = False
-                    self.peers_connected = self.peers_connected - 1
-                    del self.connections[key]
-        finally:
-            lock.release()
-        if(not(ok)):
-            print('not ok')
-            return False
-        else: return True
 
     #Função que escuta por pedidos de ficheiro
     def listen_requests(self):
@@ -180,10 +142,9 @@ class Peer:
             msg,address = receiving_socket.recvfrom(4096)
 
             if msg.decode('utf8') == 'P2PConnectionMANET':
-                print('Received connection request from:')
-                print(address)
                 add_sp = address[0]
                 if not self.belongs(add_sp):
+                    print('Received connection request from: ' + str(address))
                     sending_socket.sendto("ConnectionOK".encode('utf8'),(add_sp,10002))
                     self.known_peers.append(add_sp)
                     self.connections[add_sp] = {'alive':True, 'tries':0}
@@ -195,6 +156,7 @@ class Peer:
                 ok = True
         if address == self.IP: ok = True
         return ok
+        
     #Função que deverá pedir um ficheiro para download ao peer respetivo
     def request_files(self):
         # Pedir um conteúdo por nome. Consultar a tabela que é mantida para verificar se este peer sabe quem possui esse ficheiro.
