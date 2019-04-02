@@ -32,7 +32,7 @@ class Peer:
             mainmenu_thread.start()
             while(True):
                 pass
-        except SystemExit:
+        except SystemExit():
             sys.exit("Manually exiting P2P network.")
 
     # Função de conexão de um peer a 3 known_peers
