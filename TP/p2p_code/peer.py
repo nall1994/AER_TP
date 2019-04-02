@@ -79,14 +79,14 @@ class Peer:
                 if message.decode('utf8') == "ALIVE":
                     print('ALIVE message received from: ' + str(address[0]))
                     checked[address[0]] = True
-                    self.connections[address[0]].alive = True
-                    self.connections[address[0]].tries = 0
+                    self.connections[address[0]]["alive"] = True
+                    self.connections[address[0]]["tries"] = 0
 
             except socket.timeout:
                 for kp in self.known_peers:
                     if not checked[kp]:
-                        self.connections[kp].tries += 1
-                        if self.connections[kp].tries == 3:
+                        self.connections[kp]["tries"] += 1
+                        if self.connections[kp]["tries"] == 3:
                             del self.connections[kp]
                             del self.known_peers[kp]
                             del checked[kp]
