@@ -32,10 +32,10 @@ class Peer:
             mainmenu_thread.start()
         except SystemExit:
             print('EXITING')
-            lc_thread.join()
-            mc_thread.join()
-            cml_thread.join()
-            sys.exit()
+            lc_thread._stop()
+            mc_thread._stop()
+            cml_thread._stop()
+            sys.exit("Manually exiting P2P network.")
 
     # Função de conexão de um peer a 3 known_peers
     def connect(self):
@@ -230,4 +230,4 @@ class Peer:
         return ''
 
     def p2p_exit(self):
-        sys.exit("Manually exiting P2P network.")
+        raise SystemExit
