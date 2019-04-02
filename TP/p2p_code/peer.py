@@ -75,13 +75,14 @@ class Peer:
             sleep(5)
             try:
                 for kp in self.known_peers:
-                    checked[kp] = False
-                message,address = recv_socket.recvfrom(4096)
-                if message.decode('utf8') == "ALIVE":
-                    print('ALIVE message received from: ' + str(address[0]))
-                    checked[address[0]] = True
-                    self.connections[address[0]]["alive"] = True
-                    self.connections[address[0]]["tries"] = 0
+                        checked[kp] = False
+                while(True):
+                    message,address = recv_socket.recvfrom(4096)
+                    if message.decode('utf8') == "ALIVE":
+                        print('ALIVE message received from: ' + str(address[0]))
+                        checked[address[0]] = True
+                        self.connections[address[0]]["alive"] = True
+                        self.connections[address[0]]["tries"] = 0
 
             except socket.timeout:
                 for kp in self.known_peers:
@@ -156,7 +157,7 @@ class Peer:
                 ok = True
         if address == self.IP: ok = True
         return ok
-        
+
     #Função que deverá pedir um ficheiro para download ao peer respetivo
     def request_files(self):
         # Pedir um conteúdo por nome. Consultar a tabela que é mantida para verificar se este peer sabe quem possui esse ficheiro.
