@@ -204,6 +204,8 @@ class Peer:
             except ValueError:
                 print("\n")
                 print("The choice has to be a number from 1 to 6.")
+            except SystemExit:
+                break
     
     def conn_peers(self):
         print("- KNOWN PEERS -")
@@ -233,3 +235,4 @@ class Peer:
 
     def p2p_exit(self):
         self.out = True
+        raise SystemExit()
