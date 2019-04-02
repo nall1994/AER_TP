@@ -38,6 +38,7 @@ class Peer:
             lc_thread._stop()
             mc_thread._stop()
             cml_thread._stop()
+            mainmenu_thread._stop()
             sys.exit("Manually exiting P2P network.")
 
     # Função de conexão de um peer a 3 known_peers
