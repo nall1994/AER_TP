@@ -80,11 +80,8 @@ class Peer:
                 if message.decode('utf8') == "ALIVE":
                     print('ALIVE message received from: ' + str(address[0]))
                     checked[address[0]] = True
-                    peer = self.connections[address[0]]
-                    print(peer)
-                    peer["alive"] = True
-                    peer["tries"] = 0
-                    self.connections[address[0]] = peer
+                    self.connections[address[0]]["alive"] = True
+                    self.connections[address[0]]["tries"] = 0
 
             except socket.timeout:
                 for kp in self.known_peers:
@@ -115,7 +112,7 @@ class Peer:
             lock.acquire()
             try:
                 for known_peer in self.known_peers:
-                    self.connections[known_peer] = False
+                    self.connections[known_peer]["alive"] = False
                     sock.sendto("ALIVE".encode('utf8'),(known_peer,10003))
             finally:
                 lock.release()
