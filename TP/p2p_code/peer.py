@@ -1,5 +1,6 @@
 import socket
 import struct
+import sys
 from time import sleep
 from threading import Thread
 from threading import Lock
@@ -19,7 +20,6 @@ class Peer:
     def peer_manager(self):
         #Gerenciar as tarefas do peer
         self.IP = socket.gethostbyname(socket.gethostname())
-        print(self.IP)
         self.connect()
         cml_thread = Thread(target=self.connection_maintainer_listener)
         lc_thread = Thread(target=self.listen_connections)
@@ -61,8 +61,7 @@ class Peer:
                 break
         sock.close()
         receiving_socket.close()
-        for kp in connected_now:
-            print(kp)  
+        for kp in connected_now:  
             self.connections[kp] = {'alive':True, 'tries': 0}
 
     #Função que escuta por mensagens de avaliação de conexão e responde conforme.
@@ -78,8 +77,10 @@ class Peer:
                         checked[kp] = False
                 while(True):
                     message,address = recv_socket.recvfrom(4096)
-                    if message.decode('utf8') == "ALIVE":
-                        print('ALIVE message received from: ' + str(address[0]))
+                    message = message.decode('utf8')
+                    message = message.split(';')
+                    if message[0] == "ALIVE":
+                        # As restantes componentes recebidas na mensagem alive serão atualizações de ficheiros.
                         checked[address[0]] = True
                         self.connections[address[0]]["alive"] = True
                         self.connections[address[0]]["tries"] = 0
@@ -88,9 +89,7 @@ class Peer:
                 for kp in self.known_peers:
                     if not checked[kp]:
                         self.connections[kp]["tries"] = self.connections[kp]["tries"] + 1
-                        print(str(self.connections[kp]["tries"]) + " ALIVE message failed from: " + str(kp) + ".")
                         if self.connections[kp]["tries"] == 3:
-                            print ("Disconnecting peer: " + str(kp))
                             del self.connections[kp]
                             self.deleteKnownPeer(kp)
                             del checked[kp]
@@ -110,7 +109,6 @@ class Peer:
         # Nesta fase, cada peer também deve enviar informação atualizada dos ficheiros que tem e conhece.
         while(True): 
             sleep(5)
-            print(self.known_peers)
             if len(self.known_peers) < 3: self.connect()   
             sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
             receiving_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
@@ -145,7 +143,6 @@ class Peer:
             if msg.decode('utf8') == 'P2PConnectionMANET':
                 add_sp = address[0]
                 if not self.belongs(add_sp):
-                    print('Received connection request from: ' + str(address))
                     sending_socket.sendto("ConnectionOK".encode('utf8'),(add_sp,10002))
                     self.known_peers.append(add_sp)
                     self.connections[add_sp] = {'alive':True, 'tries':0}
@@ -158,8 +155,63 @@ class Peer:
         if address == self.IP: ok = True
         return ok
 
-    #Função que deverá pedir um ficheiro para download ao peer respetivo
-    def request_files(self):
-        # Pedir um conteúdo por nome. Consultar a tabela que é mantida para verificar se este peer sabe quem possui esse ficheiro.
-        # Se não conhecer , enviar mensagem multicast com pedido de endereço para o ficheiro
+    #Esta poderá ser a função de main_menu do peer.
+    def mainmenu(self):
+        # Deverá poder ver os peers a que está conectado.
+        # Informação alive e tries.
+        # Ficheiros que pode pedir.
+        # Ficheiros que pode enviar.
+        switcher = {
+            1: self.conn_peers,
+            2: self.conn_info,
+            3: self.known_files,
+            4: self.file_request,
+            5: self.file_submit,
+            6: self.p2p_exit
+        }
+        while(True):
+            print("----- MENU -----\n")
+            print("1 --- Check connected peers.")
+            print("2 --- Check connections information.")
+            print("3 --- Check known files.")
+            print("4 --- Request for file.")
+            print("5 --- Submit file to network.")
+            print("6 --- Disconnect from P2P network.\n")
+            escolha = input("Choose your option: ")
+            try:
+                escolha = int(escolha)
+                if escolha < 1 or escolha > 6:
+                    print("The choice has to be a number from 1 to 6.")
+                else:
+                    function_to_execute = switcher.get(escolha,None)
+                    function_to_execute()
+            except ValueError:
+                print("The choice has to be a number from 1 to 6.")
+
         return ''
+    
+    def conn_peers(self):
+        print("- KNOWN PEERS -")
+        for i in range(0,len(self.known_peers)):
+            print(str(i+1) + ": " + str(self.known_peers[i]))
+
+    
+    def conn_info(self):
+        print("- CONNECTIONS INFORMATION -")
+        for i in range(0,len(self.known_peers)):
+            print("PEER " + str(self.known_peers[i]) + ":")
+            print("\t Alive -> " + str(self.connections[self.known_peers[i]]["alive"]) + ";")
+            print("\t Alive Messages Failed -> " + str(self.connections[self.known_peers[i]]["tries"]) + ".")
+            print("\n")
+    
+    def known_files(self):
+        return ''
+
+    def file_request(self):
+        return ''
+
+    def file_submit(self):
+        return ''
+
+    def p2p_exit(self):
+        sys.exit("Manually exiting P2P network.")
