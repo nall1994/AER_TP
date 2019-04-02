@@ -88,6 +88,7 @@ class Peer:
                     if not checked[kp]:
                         self.connections[kp]["tries"] += 1
                         if self.connections[kp]["tries"] == 3:
+                            print ("Disconnecting peer: " + str(kp))
                             del self.connections[kp]
                             del self.known_peers[kp]
                             del checked[kp]
