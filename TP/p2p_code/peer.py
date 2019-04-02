@@ -21,9 +21,11 @@ class Peer:
         #Gerenciar as tarefas do peer
         self.IP = socket.gethostbyname(socket.gethostname())
         self.connect()
+        mainmenu_thread = Thread(target=self.mainmenu)
         cml_thread = Thread(target=self.connection_maintainer_listener)
         lc_thread = Thread(target=self.listen_connections)
         mc_thread = Thread(target=self.maintain_connection)
+        mainmenu_thread.start()
         lc_thread.start()
         mc_thread.start()
         cml_thread.start()
