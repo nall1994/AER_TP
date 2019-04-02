@@ -25,10 +25,16 @@ class Peer:
         cml_thread = Thread(target=self.connection_maintainer_listener)
         lc_thread = Thread(target=self.listen_connections)
         mc_thread = Thread(target=self.maintain_connection)
-        mainmenu_thread.start()
         lc_thread.start()
         mc_thread.start()
         cml_thread.start()
+        try:
+            mainmenu_thread.start()
+        except SystemExit:
+            lc_thread._stop()
+            mc_thread._stop()
+            cml_thread._stop()
+            sys.exit()
 
     # Função de conexão de um peer a 3 known_peers
     def connect(self):
@@ -172,6 +178,7 @@ class Peer:
             6: self.p2p_exit
         }
         while(True):
+            print("\n")
             print("----- MENU -----\n")
             print("1 --- Check connected peers.")
             print("2 --- Check connections information.")
@@ -183,11 +190,14 @@ class Peer:
             try:
                 escolha = int(escolha)
                 if escolha < 1 or escolha > 6:
+                    print("\n")
                     print("The choice has to be a number from 1 to 6.")
                 else:
+                    print("\n")
                     function_to_execute = switcher.get(escolha,None)
                     function_to_execute()
             except ValueError:
+                print("\n")
                 print("The choice has to be a number from 1 to 6.")
 
         return ''
@@ -202,7 +212,10 @@ class Peer:
         print("- CONNECTIONS INFORMATION -")
         for i in range(0,len(self.known_peers)):
             print("PEER " + str(self.known_peers[i]) + ":")
-            print("\t Alive -> " + str(self.connections[self.known_peers[i]]["alive"]) + ";")
+            if self.connections[self.known_peers[i]]["tries"] < 3:
+                print("\t Alive -> YES;")
+            else:
+                print("\t Alive -> NO. DISCONNECTING.;")
             print("\t Alive Messages Failed -> " + str(self.connections[self.known_peers[i]]["tries"]) + ".")
             print("\n")
     
