@@ -62,7 +62,8 @@ class Peer:
         self.connections = {}
         sock.close()
         receiving_socket.close()
-        for kp in connected_now:  
+        for kp in connected_now:
+            print(kp)  
             self.connections[kp] = {'alive':True, 'tries': 0}
 
     #Função que escuta por mensagens de avaliação de conexão e responde conforme.
