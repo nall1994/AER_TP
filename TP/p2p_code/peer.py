@@ -13,6 +13,7 @@ class Peer:
         self.needed_peers = 3
         self.max_ttl = 3
         self.known_peers = []
+        self.connections = {}
     
     # Função que gere o funcionamento de um Peer
     def peer_manager(self):
@@ -59,7 +60,6 @@ class Peer:
                     break
             if self.peers_connected == self.needed_peers:
                 break
-        self.connections = {}
         sock.close()
         receiving_socket.close()
         print('CONNECTED NOW')
