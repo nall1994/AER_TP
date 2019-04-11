@@ -16,6 +16,7 @@ class Peer:
         self.out = False
         self.known_peers = []
         self.connections = {}
+        self.connection_maintainer = dict()
     
     # Função que gere o funcionamento de um Peer
     def peer_manager(self):
@@ -26,9 +27,11 @@ class Peer:
         cml_thread = Thread(target=self.connection_maintainer_listener)
         lc_thread = Thread(target=self.listen_connections)
         mc_thread = Thread(target=self.maintain_connection)
+        cchecker_thread = Thread(target=self.connection_checker)
         lc_thread.start()
         mc_thread.start()
         cml_thread.start()
+        cchecker_thread.start()
         try:
             mainmenu_thread.start()
             while(True):
@@ -38,6 +41,7 @@ class Peer:
             lc_thread._stop()
             mc_thread._stop()
             cml_thread._stop()
+            cchecker_thread._stop()
             mainmenu_thread._stop()
             sys.exit("Manually exiting P2P network.")
 
@@ -76,44 +80,47 @@ class Peer:
         receiving_socket.close()
         for kp in connected_now:  
             self.connections[kp] = {'alive':True, 'tries': 0}
+            # Inicializar o maintainer de conexões.
+            # Armazena as mensagens de manutenção da conexão recebidas de cada peer
+            # Quando o método connection_maintainer_lister recebe uma mensagem põe-na no espaço do known_peer correspondente
+            # Outro método, poderá ser o connection_checker, verifica essas mensagens de 5 em 5 segundos.
+            # Ao verificar, tem que atualizar o self.connections. Põe as tries a 0 se o known_peer tiver uma mensagem alive
+            # Incrementa as tries caso o known_peer não tenha mensagens recebidas.
+            # Ao reconhecer as mensagens essas devem ser apagadas (visto que já foram verificadas).
+            self.connection_maintainer[kp] = [] # conterá as mensagens recebidas no buffer
 
+    def connection_checker(self):
+        while True:
+            sleep(5)
+            for kp in self.known_peers:
+                messages = self.connection_maintainer[kp]
+                if len(messages) > 0:
+                    if messages[0] == 'ALIVE':
+                        del messages[0]
+                        self.connection_maintainer[kp] = messages
+                else:
+                    self.connections[kp]['tries'] += 1
+                    if self.connections[kp]['tries'] == 3:
+                        self.deleteKnownPeer(kp)
     #Função que escuta por mensagens de avaliação de conexão e responde conforme.
     def connection_maintainer_listener(self):
         recv_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
         recv_socket.settimeout(0.5)
         recv_socket.bind(('',10003))
-        checked = dict()
         while(True):
-            sleep(5)
-            try:
-                for kp in self.known_peers:
-                        checked[kp] = False
-                while(True):
-                    message,address = recv_socket.recvfrom(4096)
-                    message = message.decode('utf8')
-                    message = message.split(';')
-                    if message[0] == "ALIVE":
-                        # As restantes componentes recebidas na mensagem alive serão atualizações de ficheiros.
-                        checked[address[0]] = True
-                        self.connections[address[0]]["alive"] = True
-                        self.connections[address[0]]["tries"] = 0
-
-            except socket.timeout:
-                for kp in self.known_peers:
-                    if not checked[kp]:
-                        self.connections[kp]["tries"] = self.connections[kp]["tries"] + 1
-                        if self.connections[kp]["tries"] == 3:
-                            del self.connections[kp]
-                            self.deleteKnownPeer(kp)
-                            del checked[kp]
-        
-                if len(self.known_peers) < self.needed_peers:
-                    self.connect()
+            message,address = recv_socket.recvfrom(4096)
+            message = message.decode('utf8')
+            message = message.split(';')
+            if message[0] == "ALIVE":
+            # As restantes componentes recebidas na mensagem alive serão atualizações de ficheiros.
+                self.connection_maintainer[address[0]].append(message[0])
 
     def deleteKnownPeer(self,kp):
         for i in range(0,len(self.known_peers)):
             if self.known_peers[i] == kp:
                 del self.known_peers[i]
+                del self.connections[kp]
+                del self.connection_maintainer[kp]
                 break
 
     #Função que, periodicamente, troca mensagens com os seus known_peers com o objetivo de avaliar o estado da sua ligação
