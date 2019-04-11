@@ -105,7 +105,6 @@ class Peer:
     #Função que escuta por mensagens de avaliação de conexão e responde conforme.
     def connection_maintainer_listener(self):
         recv_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
-        recv_socket.settimeout(0.5)
         recv_socket.bind(('',10003))
         while(True):
             message,address = recv_socket.recvfrom(4096)
