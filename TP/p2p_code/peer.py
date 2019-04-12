@@ -102,6 +102,8 @@ class Peer:
                     self.connections[kp]['tries'] += 1
                     if self.connections[kp]['tries'] == 3:
                         self.deleteKnownPeer(kp)
+            if len(self.known_peers) < self.needed_peers:
+                self.connect()
     #Função que escuta por mensagens de avaliação de conexão e responde conforme.
     def connection_maintainer_listener(self):
         recv_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
