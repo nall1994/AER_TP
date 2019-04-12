@@ -70,7 +70,6 @@ class Peer:
                             self.known_peers.append(address[0])
                             self.connection_maintainer[address[0]] = []
                             self.connections[address[0]] = {'alive':True, 'tries': 0}
-                            print(self.connection_maintainer)
                         if self.peers_connected == self.needed_peers:
                             break
                 except socket.timeout:
@@ -165,6 +164,7 @@ class Peer:
                 if not self.belongs(add_sp):
                     sending_socket.sendto("ConnectionOK".encode('utf8'),(add_sp,10002))
                     self.known_peers.append(add_sp)
+                    self.connection_maintainer[add_sp] = []
                     self.connections[add_sp] = {'alive':True, 'tries':0}
 
     def belongs(self,address):
