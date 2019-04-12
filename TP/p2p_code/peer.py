@@ -96,6 +96,7 @@ class Peer:
                     if messages[0] == 'ALIVE':
                         del messages[0]
                         self.connection_maintainer[kp] = messages
+                        self.connections[kp]['tries'] = 0
                 else:
                     self.connections[kp]['tries'] += 1
                     if self.connections[kp]['tries'] == 3:
