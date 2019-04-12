@@ -47,7 +47,6 @@ class Peer:
 
     # Função de conexão de um peer a 3 known_peers
     def connect(self):
-        connected_now = []
         # NÃO ESTÁ A FAZER OS TTLS TODOS. SÓ FAZ PARA OS VIZINHOS
         for i in range(1,self.max_ttl + 1):
             # Criar uma socket e enviar pedido de conexão para os vizinhos a distância i
@@ -69,7 +68,8 @@ class Peer:
                         self.peers_connected = self.peers_connected + 1
                         if not self.belongs(address[0]):
                             self.known_peers.append(address[0])
-                            connected_now.append(address[0])
+                            self.connection_maintainer[address[0]] = []
+                            self.connections[address[0]] = {'alive':True, 'tries': 0}
                         if self.peers_connected == self.needed_peers:
                             break
                 except socket.timeout:
@@ -78,8 +78,6 @@ class Peer:
                 break
         sock.close()
         receiving_socket.close()
-        for kp in connected_now:  
-            self.connections[kp] = {'alive':True, 'tries': 0}
             # Inicializar o maintainer de conexões.
             # Armazena as mensagens de manutenção da conexão recebidas de cada peer
             # Quando o método connection_maintainer_lister recebe uma mensagem põe-na no espaço do known_peer correspondente
@@ -87,7 +85,7 @@ class Peer:
             # Ao verificar, tem que atualizar o self.connections. Põe as tries a 0 se o known_peer tiver uma mensagem alive
             # Incrementa as tries caso o known_peer não tenha mensagens recebidas.
             # Ao reconhecer as mensagens essas devem ser apagadas (visto que já foram verificadas).
-            self.connection_maintainer[kp] = [] # conterá as mensagens recebidas no buffer
+             # conterá as mensagens recebidas no buffer
 
     def connection_checker(self):
         while True:
