@@ -17,6 +17,10 @@ class Peer:
         self.known_peers = []
         self.connections = {}
         self.connection_maintainer = dict()
+        self.files = []
+        self.updated_files = False
+        self.interests_table = dict()
+        self.routing_table = dict()
     
     # Função que gere o funcionamento de um Peer
     def peer_manager(self):
@@ -28,10 +32,12 @@ class Peer:
         lc_thread = Thread(target=self.listen_connections)
         mc_thread = Thread(target=self.maintain_connection)
         cchecker_thread = Thread(target=self.connection_checker)
+        files_thread = Thread(target=self.file_updater)
         lc_thread.start()
         mc_thread.start()
         cml_thread.start()
         cchecker_thread.start()
+        files_thread.start()
         try:
             mainmenu_thread.start()
             while(True):
@@ -233,12 +239,27 @@ class Peer:
             print("\n")
     
     def known_files(self):
+        # Esta função pdoerá não ser necessária. ver ainda!!
+        return ''
+    
+    def updates_receiver(self):
+        # Thread que deverá continuamente ouvir por atualizações dos seus known_peers em relação aos ficheiros conhecidos dos mesmos.
+        return ''
+    
+    def files_updater(self):
+        # Função que verifica de 5 em 5 segundos se existem atualizacoes de ficheiros a enviar aos known_peers.
         return ''
 
     def file_request(self):
+        # Ao pedir o ficheiro verificar se este existe na tabela de encaminhamento.
+        # Se existir, pedir ao peer respetivo que está no salto da tabela de encamionhamento para esse ficheiro.
+        # Se não existir cosntruir um pacote de pedido de ficheiro e enviar para todos os peers.
+        # Deve ser posta na tabela de interesses esse pedido, num caso ou noutro.
         return ''
 
     def file_submit(self):
+        # Ao submeter o ficheiro, deve ser acrescentado ao array files, que são os ficheiros deste peer.
+        # A flag updated_files deve ser posta a True para que a thread files_updater envie essa info aos known_peers.
         return ''
 
     def p2p_exit(self):
