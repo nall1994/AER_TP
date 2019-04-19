@@ -4,6 +4,7 @@ import sys
 from time import sleep
 from threading import Thread
 from threading import Lock
+from pathlib import Path
 
 class Peer:
 
@@ -18,6 +19,7 @@ class Peer:
         self.connections = {}
         self.connection_maintainer = dict()
         self.files = []
+        self.temporary_updater = []
         self.updated_files = False
         self.interests_table = dict()
         self.routing_table = dict()
@@ -32,12 +34,14 @@ class Peer:
         lc_thread = Thread(target=self.listen_connections)
         mc_thread = Thread(target=self.maintain_connection)
         cchecker_thread = Thread(target=self.connection_checker)
-        files_thread = Thread(target=self.file_updater)
+        files_thread = Thread(target=self.files_updater)
+        listen_files_thread = Thread(target=self.listen_file_requests)
         lc_thread.start()
         mc_thread.start()
         cml_thread.start()
         cchecker_thread.start()
         files_thread.start()
+        listen_files_thread.start()
         try:
             mainmenu_thread.start()
             while(True):
@@ -137,9 +141,6 @@ class Peer:
             sleep(5)
             if len(self.known_peers) < 3: self.connect()   
             sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
-            receiving_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
-            receiving_socket.settimeout(0.5)
-            receiving_socket.bind(('',10004))
             lock = Lock()
             lock.acquire()
             try:
@@ -239,16 +240,42 @@ class Peer:
             print("\n")
     
     def known_files(self):
-        # Esta função pdoerá não ser necessária. ver ainda!!
-        return ''
+        # Esta função apenas apresenta os ficheiros conhecidos na consola.
+        print("CONTENT  -->  PEER")
+        for key,value in self.routing_table.items():
+            print(key + "  -->  " + value)
     
     def updates_receiver(self):
         # Thread que deverá continuamente ouvir por atualizações dos seus known_peers em relação aos ficheiros conhecidos dos mesmos.
-        return ''
+        recv_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
+        recv_socket.bind(('',10004))
+        while True:
+            update, address = recv_socket.recvfrom(20000)
+            files_array = update.split(";")
+            peer = address[0]
+            for file in files_array:
+                self.routing_table[file] = peer
     
     def files_updater(self):
         # Função que verifica de 5 em 5 segundos se existem atualizacoes de ficheiros a enviar aos known_peers.
-        return ''
+        while(True):
+            sleep(5)
+            if self.updated_files :
+                #send updated_files to known_peers
+                # escuta de atualizacoes de ficheiros na porta 10004
+                sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
+                update = ""
+                for i in range(0,len(self.temporary_updater)):
+                    self.files.append(self.temporary_updater[i])
+                    if i == len(self.temporary_updater) - 1:
+                        update += self.temporary_updater[i]
+                    else:
+                        update += self.temporary_updater[i] + ";"
+                self.temporary_updater.clear()
+                for kp in self.known_peers:
+                    sending_socket.send(update.encode('utf8'),(kp,10004))
+
+
 
     def file_request(self):
         # Ao pedir o ficheiro verificar se este existe na tabela de encaminhamento.
@@ -256,11 +283,25 @@ class Peer:
         # Se não existir cosntruir um pacote de pedido de ficheiro e enviar para todos os peers.
         # Deve ser posta na tabela de interesses esse pedido, num caso ou noutro.
         return ''
+    
+    def listen_file_requests(self):
+        # Escutar por pedidos de ficheiro na porta 10005
+        return ''
 
     def file_submit(self):
+        try:
+            file_path = input("Insira o caminho até ao ficheiro que pretende submeter para a rede P2P:")
+            file = Path(file_path)
+            if file.is_file():
+                self.temporary_updater.append(file_path)
+                self.updated_files = True
+                self.routing_table[file_path] = 'self'
+            else:
+                print('O caminho que inseriu não indica um ficheiro!')
+        except EOFError:
+            pass
         # Ao submeter o ficheiro, deve ser acrescentado ao array files, que são os ficheiros deste peer.
         # A flag updated_files deve ser posta a True para que a thread files_updater envie essa info aos known_peers.
-        return ''
 
     def p2p_exit(self):
         self.out = True
