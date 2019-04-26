@@ -284,9 +284,43 @@ class Peer:
         # Deve ser posta na tabela de interesses esse pedido, num caso ou noutro.
         return ''
     
+    def send_file(self,message,address):
+        # verificar se existe na PIT uma entrada com chave message.file_name e valor address
+        # se existir: apagar essa entrada e enviar message para address na porta 10006.
+        # se não existir deixar cair o pacote.
+        return ''
+    
     def listen_file_requests(self):
         # Escutar por pedidos de ficheiro na porta 10005
-        return ''
+        recv_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
+        recv_socket.bind('',10005)
+        while True:
+            message,address = recv_socket.recvfrom(10000)
+            message = message.decode('utf8')
+            if message.type == 'REQUEST':
+                # Secalhar na PIT temos que ter um número de sequência para saber qual a mensagem que deve ser respondida em primeiro.
+                requested_file = message.file_name
+                # Se naõ existir nenhuma entrada na PIT para este interesse, a mesma deve ser criada.
+                # Uma função file_response, a função send_file tratará de eliminar essas entradas da PIT.
+                # Quando chega uma mensagem ao destino final, se não existir um interesse declarado na PIT.
+                # O pacote deve ser dropped.
+                if self.routing_table[requested_file] == 'self':
+                    # em vez de enviar o nome do ficheiro, enviámos logo a mensagem.
+                    self.send_file(requested_file,address[0])
+                else:
+                    # Add request to PIT and perform a file_request based on routing_table
+                    # If there is not a name on the routing table corresponding to the requested file
+                    # Request file to all known_peers except the one who sent the message.
+                    print('')
+            elif message.type == 'RESPONSE':
+                # Esta mensagem já é uma resposta com um ficheiro.
+                # Verificar message.file_name na PIT e ver qual o endereço a enviar a mensagem.
+                # Chamar a função send_file com a mensagem e o endereço
+                print('')
+            else:
+                pass
+
+
 
     def file_submit(self):
         try:
