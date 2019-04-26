@@ -270,7 +270,7 @@ class Peer:
                         update += file_name
                     else:
                         update += file_name + ";"
-                self.temporary_updater.clear()
+                self.temporary_updater = []
                 for kp in self.known_peers:
                     sending_socket.send(update.encode('utf8'),(kp,10004))
 
@@ -312,7 +312,7 @@ class Peer:
     def listen_file_requests(self):
         # Escutar por pedidos e respostas de ficheiro na porta 10005
         recv_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
-        recv_socket.bind('',10005)
+        recv_socket.bind(('',10005))
         while True:
             message,address = recv_socket.recvfrom(1000000)
             message = json.loads(message.decode('utf8'))
