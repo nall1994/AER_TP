@@ -272,7 +272,7 @@ class Peer:
                         update += file_name + ";"
                 self.temporary_updater = []
                 for kp in self.known_peers:
-                    sending_socket.send(update.encode('utf8'),(kp,10004))
+                    sending_socket.sendto(update.encode('utf8'),(kp,10004))
 
 
 
@@ -291,10 +291,10 @@ class Peer:
         routing_info = self.routing_table.get(nome_ficheiro)
         self.interests_table[nome_ficheiro] = 'self'
         if routing_info != None:
-            sending_socket.send(message,(routing_info,10005))
+            sending_socket.sendto(message,(routing_info,10005))
         else:
             for kp in self.known_peers:
-                sending_socket.send(message,(kp,10005))
+                sending_socket.sendto(message,(kp,10005))
     
     def send_file(self,message):
         # Alterar a interests_table para permitir mais que um peer com interesse no ficheiro (array ligado À chave)
@@ -304,7 +304,7 @@ class Peer:
             del self.interests_table[message.file_name]
             message = json.dumps(message).encode('utf8')
             sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
-            sending_socket.send(message,(interest,10005))
+            sending_socket.sendto(message,(interest,10005))
             print('response ok!')
         else:
             print('File not sent! There is no longer an interest in that file!')    
@@ -340,7 +340,7 @@ class Peer:
                     message_to_send = json.dumps(message_to_send).encode('utf8')
                     for kp in self.known_peers:
                         if not kp == address[0]:
-                            sending_socket.send(message_to_send,(kp,10005))
+                            sending_socket.sendto(message_to_send,(kp,10005))
             elif message.type == 'RESPONSE':
                 interest = self.interests_table.get(message.file_name)
                 if interest == 'self':
@@ -357,7 +357,7 @@ class Peer:
                     sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
                     message = json.dumps(message).encode('utf8')
                     del self.interests_table[requested_file]
-                    sending_socket.send(message,(interest,10005))
+                    sending_socket.sendto(message,(interest,10005))
 
                 # Esta mensagem já é uma resposta com um ficheiro.
                 # Verificar message.file_name na PIT e ver qual o endereço a enviar a mensagem.
