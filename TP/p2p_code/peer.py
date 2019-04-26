@@ -1,6 +1,7 @@
 import socket
 import struct
 import sys
+import json
 from time import sleep
 from threading import Thread
 from threading import Lock
@@ -18,7 +19,7 @@ class Peer:
         self.known_peers = []
         self.connections = {}
         self.connection_maintainer = dict()
-        self.files = []
+        self.files = dict() # file_name -> file_path
         self.temporary_updater = []
         self.updated_files = False
         self.interests_table = dict()
@@ -150,13 +151,6 @@ class Peer:
             finally:
                 lock.release()
 
-    #Função que escuta por pedidos de ficheiro
-    def listen_requests(self):
-        # Os ficheiros devem ser inseridos na rede pelo peer. Nesta fase podemos inserir manualmente os nomes.
-        # escutar por pedidos de ficheiro e enviá-los se os tiver. responder com o endereço que o tem se conhecer.
-        # Responder que não conhece caso não tenha conhecimento (ou não responder de todo).
-        return ''
-
     def listen_connections(self):
         sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
         receiving_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
@@ -254,7 +248,9 @@ class Peer:
             files_array = update.split(";")
             peer = address[0]
             for file in files_array:
-                self.routing_table[file] = peer
+                temp = self.routing_table.get(file)
+                if temp == None or temp != 'self':
+                    self.routing_table[file] = peer
     
     def files_updater(self):
         # Função que verifica de 5 em 5 segundos se existem atualizacoes de ficheiros a enviar aos known_peers.
@@ -266,11 +262,14 @@ class Peer:
                 sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
                 update = ""
                 for i in range(0,len(self.temporary_updater)):
-                    self.files.append(self.temporary_updater[i])
+                    file_path = self.temporary_updater[i]
+                    file_parts = file_path.split("/")
+                    file_name = file_parts[len(file_parts) - 1]
+                    self.files[file_name] = file_path
                     if i == len(self.temporary_updater) - 1:
-                        update += self.temporary_updater[i]
+                        update += file_name
                     else:
-                        update += self.temporary_updater[i] + ";"
+                        update += file_name + ";"
                 self.temporary_updater.clear()
                 for kp in self.known_peers:
                     sending_socket.send(update.encode('utf8'),(kp,10004))
@@ -281,42 +280,88 @@ class Peer:
         # Ao pedir o ficheiro verificar se este existe na tabela de encaminhamento.
         # Se existir, pedir ao peer respetivo que está no salto da tabela de encamionhamento para esse ficheiro.
         # Se não existir cosntruir um pacote de pedido de ficheiro e enviar para todos os peers.
-        # Deve ser posta na tabela de interesses esse pedido, num caso ou noutro.
-        return ''
+        # Deve ser posta na tabela de interesses esse pedido, num caso ou noutro
+        nome_ficheiro = input("Introduza o nome do ficheiro que pretende:")
+        message = {
+            "type": "REQUEST",
+            "file_name": nome_ficheiro
+        }
+        message = json.dumps(message).encode('utf8')
+        sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
+        routing_info = self.routing_table.get(nome_ficheiro)
+        self.interests_table[nome_ficheiro] = 'self'
+        if routing_info != None:
+            sending_socket.send(message,(routing_info,10005))
+        else:
+            for kp in self.known_peers:
+                sending_socket.send(message,(kp,10005))
     
-    def send_file(self,message,address):
-        # verificar se existe na PIT uma entrada com chave message.file_name e valor address
-        # se existir: apagar essa entrada e enviar message para address na porta 10006.
-        # se não existir deixar cair o pacote.
-        return ''
+    def send_file(self,message):
+        # Alterar a interests_table para permitir mais que um peer com interesse no ficheiro (array ligado À chave)
+        # O peer na posição 0 do array é o mais antigo e , logo, o primeiro a responder.
+        interest = self.interests_table.get(message.file_name)
+        if interest != None:
+            del self.interests_table[message.file_name]
+            message = json.dumps(message).encode('utf8')
+            sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
+            sending_socket.send(message,(interest,10005))
+            print('response ok!')
+        else:
+            print('File not sent! There is no longer an interest in that file!')    
     
     def listen_file_requests(self):
-        # Escutar por pedidos de ficheiro na porta 10005
+        # Escutar por pedidos e respostas de ficheiro na porta 10005
         recv_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
         recv_socket.bind('',10005)
         while True:
-            message,address = recv_socket.recvfrom(10000)
-            message = message.decode('utf8')
+            message,address = recv_socket.recvfrom(1000000)
+            message = json.loads(message.decode('utf8'))
             if message.type == 'REQUEST':
-                # Secalhar na PIT temos que ter um número de sequência para saber qual a mensagem que deve ser respondida em primeiro.
                 requested_file = message.file_name
-                # Se naõ existir nenhuma entrada na PIT para este interesse, a mesma deve ser criada.
-                # Uma função file_response, a função send_file tratará de eliminar essas entradas da PIT.
-                # Quando chega uma mensagem ao destino final, se não existir um interesse declarado na PIT.
-                # O pacote deve ser dropped.
                 if self.routing_table[requested_file] == 'self':
-                    # em vez de enviar o nome do ficheiro, enviámos logo a mensagem.
-                    self.send_file(requested_file,address[0])
+                    # ler dados do ficheiro : self.files[requested_file] é o path para o ficheiro
+                    content_file = open(self.files[requested_file],"r")
+                    content = content_file.read()
+                    message = {
+                        "type": "RESPONSE",
+                        "file_name": requested_file,
+                        "content": content
+                    }
+                    content_file.close()
+                    self.interests_table[requested_file] = address[0]
+                    self.send_file(message)
                 else:
-                    # Add request to PIT and perform a file_request based on routing_table
-                    # If there is not a name on the routing table corresponding to the requested file
-                    # Request file to all known_peers except the one who sent the message.
-                    print('')
+                    self.interests_table[message.file_name] = address[0]
+                    sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
+                    message_to_send = {
+                        "type": "REQUEST",
+                        "file_name": requested_file
+                    }
+                    message_to_send = json.dumps(message_to_send).encode('utf8')
+                    for kp in self.known_peers:
+                        if not kp == address[0]:
+                            sending_socket.send(message_to_send,(kp,10005))
             elif message.type == 'RESPONSE':
+                interest = self.interests_table.get(message.file_name)
+                if interest == 'self':
+                    # guardar o ficheiro
+                    file_path = input("Introduza o caminho onde quer guardar o ficheiro:")
+                    file_path = file_path + "/" + message.file_name
+                    file = open(file_path, "w")
+                    file.write(message.content)
+                    file.close()
+                    print('Ficheiro guardado com sucesso em: ' + file_path)
+                    del self.interests_table[message.file_name]
+                    # Falta pôr este ficheiro como submetido na rede P2P
+                elif interest != None:
+                    sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
+                    message = json.dumps(message).encode('utf8')
+                    del self.interests_table[requested_file]
+                    sending_socket.send(message,(interest,10005))
+
                 # Esta mensagem já é uma resposta com um ficheiro.
                 # Verificar message.file_name na PIT e ver qual o endereço a enviar a mensagem.
-                # Chamar a função send_file com a mensagem e o endereço
-                print('')
+                # Chamar a função send_file com a mensagem.
             else:
                 pass
 
