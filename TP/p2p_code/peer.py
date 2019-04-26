@@ -5,7 +5,7 @@ import json
 from time import sleep
 from threading import Thread
 from threading import Lock
-from pathlib import Path
+#from pathlib import Path
 
 class Peer:
 
@@ -370,13 +370,13 @@ class Peer:
     def file_submit(self):
         try:
             file_path = input("Insira o caminho até ao ficheiro que pretende submeter para a rede P2P:")
-            file = Path(file_path)
-            if file.is_file():
-                self.temporary_updater.append(file_path)
-                self.updated_files = True
-                self.routing_table[file_path] = 'self'
-            else:
-                print('O caminho que inseriu não indica um ficheiro!')
+            #file = Path(file_path)
+            #if file.is_file():
+            self.temporary_updater.append(file_path)
+            self.updated_files = True
+            self.routing_table[file_path] = 'self'
+            #else:
+            #    print('O caminho que inseriu não indica um ficheiro!')
         except EOFError:
             pass
         # Ao submeter o ficheiro, deve ser acrescentado ao array files, que são os ficheiros deste peer.
