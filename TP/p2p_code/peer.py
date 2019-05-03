@@ -8,6 +8,11 @@ from threading import Thread
 from threading import Lock
 #from pathlib import Path
 
+# Poder associar um interesse num ficheiro a vários peers. A ordem do array é a ordem que deve ser respondido.
+# Falta acrescentar tolerância a atrasos. 3 tentativas de transmissão. Mensagens INFORM quando uma transferência foi bem sucedida.
+# Quando a transf. nao e bem sucedida, guardar essa info numa tabela (peer, nome do ficheiro). Criar uma thread que tente enviar 
+# uma mensagem ao peer. até dar ? tentativas?
+
 class Peer:
 
     def __init__(self):
