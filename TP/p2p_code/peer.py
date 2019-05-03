@@ -6,7 +6,7 @@ import os
 from time import sleep
 from threading import Thread
 from threading import Lock
-#from pathlib import Path
+from pathlib import Path
 
 # Poder associar um interesse num ficheiro a vários peers. A ordem do array é a ordem que deve ser respondido.
 # Falta acrescentar tolerância a atrasos. 3 tentativas de transmissão. Mensagens INFORM quando uma transferência foi bem sucedida.
@@ -114,6 +114,7 @@ class Peer:
                         self.deleteKnownPeer(kp)
             if len(self.known_peers) < self.needed_peers:
                 self.connect()
+
     #Função que escuta por mensagens de avaliação de conexão e responde conforme.
     def connection_maintainer_listener(self):
         recv_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
@@ -284,7 +285,7 @@ class Peer:
         message = json.dumps(message).encode('utf8')
         sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
         routing_info = self.routing_table.get(nome_ficheiro)
-        self.interests_table[nome_ficheiro] = 'self'
+        self.add_interest(message["file_name"],'self')
         if routing_info != None:
             sending_socket.sendto(message,(routing_info,10004))
         else:
@@ -294,9 +295,10 @@ class Peer:
     def send_file(self,message):
         # Alterar a interests_table para permitir mais que um peer com interesse no ficheiro (array ligado À chave)
         # O peer na posição 0 do array é o mais antigo e , logo, o primeiro a responder.
-        interest = self.interests_table.get(message["file_name"])
+        #interest = self.interests_table.get(message["file_name"]) # Ir buscar o primeiro elemento do array resultado.
+        interest = self.get_first_interest(message["file_name"])
         if interest != None:
-            del self.interests_table[message["file_name"]]
+            self.delete_first_interest(message["file_name"])
             message = json.dumps(message).encode('utf8')
             sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
             sending_socket.sendto(message,(interest,10004))
@@ -315,18 +317,24 @@ class Peer:
                 routing_info = self.routing_table.get(requested_file)
                 if routing_info == 'self':
                     # ler dados do ficheiro : self.files[requested_file] é o path para o ficheiro
-                    content_file = open(self.files[requested_file],"r")
-                    content = content_file.read()
-                    message = {
-                        "type": "FILE_RESPONSE",
-                        "file_name": requested_file,
-                        "content": content
-                    }
-                    content_file.close()
-                    self.interests_table[requested_file] = address[0]
-                    self.send_file(message)
+                    file = Path(self.files[requested_file])
+                    if file.is_file():
+                        content_file = open(self.files[requested_file],"r")
+                        content = content_file.read()
+                        message = {
+                            "type": "FILE_RESPONSE",
+                            "file_name": requested_file,
+                            "content": content
+                        }
+                        content_file.close()
+                        self.add_interest(requested_file,address[0])
+                        self.send_file(message)
+                    else:
+                        # Enviar mensagem INFORM a dizer que este peer já não possui o ficheiro
+                        # Ou secalhar pedir o ficheiro aos outros known_peers.
+                        pass
                 elif routing_info == None :
-                    self.interests_table[message["file_name"]] = address[0]
+                    self.add_interest(requested_file,'self')
                     sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
                     message_to_send = {
                         "type": "FILE_REQUEST",
@@ -338,7 +346,7 @@ class Peer:
                             sending_socket.sendto(message_to_send,(kp,10004))
                 else:
                     sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
-                    self.interests_table[message["file_name"]] = address[0]
+                    self.add_interest(requested_file,address[0])
                     message_to_send = {
                         "type": "FILE_REQUEST",
                         "file_name": requested_file
@@ -346,7 +354,7 @@ class Peer:
                     message_to_send = json.dumps(message_to_send).encode('utf8')
                     sending_socket.sendto(message_to_send,(routing_info,10004))
             elif message["type"] == 'FILE_RESPONSE':
-                interest = self.interests_table.get(message["file_name"])
+                interest = self.get_first_interest(message["file_name"])
                 if interest == 'self':
                     if not(os.path.exists('downloaded_files')):
                         os.mkdir('downloaded_files')
@@ -355,11 +363,11 @@ class Peer:
                     file.write(message["content"])
                     file.close()
                     print('Ficheiro guardado com sucesso em: ' + file_path)
-                    del self.interests_table[message["file_name"]]
+                    self.delete_first_interest(message["file_name"])
                 elif interest != None:
                     sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
                     message = json.dumps(message).encode('utf8')
-                    del self.interests_table[requested_file]
+                    self.delete_first_interest(message["file_name"])
                     sending_socket.sendto(message,(interest,10004))
             elif message["type"] == "FILE_UPDATE":
                 peer = address[0]
@@ -370,19 +378,41 @@ class Peer:
     def file_submit(self):
         try:
             file_path = input("Insira o caminho até ao ficheiro que pretende submeter para a rede P2P:")
-            #file = Path(file_path)
-            #if file.is_file():
-            self.temporary_updater.append(file_path)
-            self.updated_files = True
-            file_parts = file_path.split('/')
-            file_name = file_parts[len(file_parts) - 1]
-            self.routing_table[file_name] = 'self'
-            #else:
-            #    print('O caminho que inseriu não indica um ficheiro!')
+            file = Path(file_path)
+            if file.is_file():
+                self.temporary_updater.append(file_path)
+                self.updated_files = True
+                file_parts = file_path.split('/')
+                file_name = file_parts[len(file_parts) - 1]
+                self.routing_table[file_name] = 'self'
+            else:
+                print('O caminho que inseriu não indica um ficheiro!')
         except EOFError:
             pass
         # Ao submeter o ficheiro, deve ser acrescentado ao array files, que são os ficheiros deste peer.
         # A flag updated_files deve ser posta a True para que a thread files_updater envie essa info aos known_peers.
+
+    def delete_first_interest(self,file_name):
+        assoc_array = self.interests_table.get(file_name)
+        del assoc_array[0]
+        if len(assoc_array) > 0:
+            self.interests_table[file_name] = assoc_array
+        else:
+            del self.interests_table[file_name]
+    
+    def get_first_interest(self,file_name):
+        assoc_array = self.interests_table.get(file_name)
+        return assoc_array
+
+    def add_interest(self,file_name,peer):
+        assoc_array = self.interests_table.get(file_name)
+        if assoc_array == None:
+            arr = []
+            arr.append(peer)
+            self.interests_table[file_name] = arr
+        else:
+            assoc_array.append(peer)
+            self.interests_table[file_name] = assoc_array
 
     def p2p_exit(self):
         self.out = True
