@@ -9,14 +9,8 @@ from threading import Lock
 import random
 import string
 
-# Tolerância a atrasos já está implementada, convinha testar mesmo numa rede móvel.
-# Uma mensagem criada possui agora um message_id para identificar as suas confirmações.
 # Do que faltar:
 # - Ter em atenção o tamanho do ficheiro a receber (dividir em chunks)
-# - Ter em atenção que os pedidos não sejam propagadas infinitamente, por exemplo:
-#       - ter um contador de floodings consecutivos (quando um peer pergunta por um ficheiro a todos os seus peers),
-        # se esse número atingir 5, a transmissão de pedidos pára, qualquer resposta que possa haver já existirá à partida.
-# Põr os INFORMS (se der) quando um pedido não é concretizado.
 
 
 class Peer:
@@ -105,6 +99,7 @@ class Peer:
         sock.close()
         receiving_socket.close()
 
+    # Função que verifica a conexão atual com os seus peers.
     def connection_checker(self):
         while True:
             sleep(5)
@@ -145,6 +140,7 @@ class Peer:
             # As restantes componentes recebidas na mensagem alive serão atualizações de ficheiros.
                 self.connection_maintainer[address[0]].append(message[0])
 
+    # Função que apaga um peer dos peers conectados
     def deleteKnownPeer(self,kp):
         for i in range(0,len(self.known_peers)):
             if self.known_peers[i] == kp:
@@ -170,6 +166,7 @@ class Peer:
             finally:
                 lock.release()
 
+    # Função que escuta por pedidos de conexão na rede P2P
     def listen_connections(self):
         sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
         receiving_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
@@ -188,6 +185,7 @@ class Peer:
                     self.connection_maintainer[add_sp] = []
                     self.connections[add_sp] = {'alive':True, 'tries':0}
 
+    # Função que verifica se um dado endereço já pertence aos peers conectados.
     def belongs(self,address):
         ok = False
         for kp in self.known_peers:
@@ -235,12 +233,13 @@ class Peer:
             except SystemExit:
                 break
     
+    # Função de extracção do conhecimento sobre os peers conectados
     def conn_peers(self):
         print("- KNOWN PEERS -")
         for i in range(0,len(self.known_peers)):
             print(str(i+1) + ": " + str(self.known_peers[i]))
 
-    
+    # Função de extracção do conhecimento de informação sobre as conexões
     def conn_info(self):
         print("- CONNECTIONS INFORMATION -")
         for i in range(0,len(self.known_peers)):
@@ -252,12 +251,14 @@ class Peer:
             print("\t Alive Messages Failed -> " + str(self.connections[self.known_peers[i]]["tries"]) + ".")
             print("\n")
     
+    # Função de extracção de conhecimento dos ficheiros conhecidos
     def known_files(self):
         # Esta função apenas apresenta os ficheiros conhecidos na consola.
         print("CONTENT  -->  PEER")
         for key,value in self.routing_table.items():
             print(key + "  -->  " + value)
     
+    # Função de atualização do conhecimento de ficheiros, localmente.
     def update_files(self,message,peer):
         update = message["content"]
         files_array = update.split(";")
@@ -266,6 +267,7 @@ class Peer:
             if temp == None or temp != 'self':
                 self.routing_table[file] = peer
     
+    # Função de envio de atualizações
     def files_updater(self):
         # Função que verifica de 5 em 5 segundos se existem atualizacoes de ficheiros a enviar aos known_peers.
         while(True):
@@ -293,14 +295,15 @@ class Peer:
                 self.updated_files = False
 
 
-
+    # Pedir um ficheiro à rede P2P
     def file_request(self):
         nome_ficheiro = input("Introduza o nome do ficheiro que pretende:")
         message_id = self.random_id()
         message = {
             "type": "FILE_REQUEST",
             "file_name": nome_ficheiro,
-            "mid": message_id
+            "mid": message_id,
+            "flooding_counter" : "0"
         }
         message = json.dumps(message).encode('utf8')
         sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
@@ -312,10 +315,8 @@ class Peer:
             for kp in self.known_peers:
                 sending_socket.sendto(message,(kp,10004))
     
+    # Enviar um ficheiro que foi pedido.
     def send_file(self,message,recv_socket):
-        # Alterar a interests_table para permitir mais que um peer com interesse no ficheiro (array ligado À chave)
-        # O peer na posição 0 do array é o mais antigo e , logo, o primeiro a responder.
-        #interest = self.interests_table.get(message["file_name"]) # Ir buscar o primeiro elemento do array resultado.
         interest = self.get_first_interest(message["file_name"])
         if interest != None:
             self.delete_first_interest(message["file_name"])
@@ -337,6 +338,7 @@ class Peer:
         else:
             print('File not sent! There is no longer an interest in that file!')    
     
+    # Adicionar uma transferência pendente
     def add_pending_transfer(self,peer,message):
         peer_array = self.pending_transfers.get(peer)
         if peer_array == None:
@@ -347,6 +349,7 @@ class Peer:
             peer_array.append(message)
             self.pending_transfers[peer] = peer_array
     
+    # Apagar uma transferência pendente.
     def delete_pending_transfer(self,peer,message_id):
         peer_transfers_array = self.pending_transfers.get(peer)
         if peer_transfers_array == None:
@@ -358,6 +361,7 @@ class Peer:
                     del peer_transfers_array[i]
                     self.pending_transfers[peer] = peer_transfers_array
 
+    # ouvir por pedidos, respostas, atualizações e informações de ficheiros.
     def listen_file_requests(self):
         # Escutar por pedidos e respostas de ficheiro na porta 10004
         confirmation_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
@@ -400,17 +404,33 @@ class Peer:
                             # Ou secalhar pedir o ficheiro aos outros known_peers.
                             pass
                     elif routing_info == None :
-                        self.add_interest(requested_file,address[0])
-                        sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
-                        message_to_send = {
-                            "type": "FILE_REQUEST",
-                            "mid": message_id,
-                            "file_name": requested_file
-                        }
-                        message_to_send = json.dumps(message_to_send).encode('utf8')
-                        for kp in self.known_peers:
-                            if not kp == address[0]:
-                                sending_socket.sendto(message_to_send,(kp,10004))
+                        flooding_counter = int(message["flooding_counter"])
+                        if flooding_counter < 5:
+                            self.add_interest(requested_file,address[0])
+                            sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
+                            flooding_counter += 1
+                            message_to_send = {
+                                "type": "FILE_REQUEST",
+                                "mid": message_id,
+                                "file_name": requested_file,
+                                "flooding_counter": str(flooding_counter)
+                            }
+                            message_to_send = json.dumps(message_to_send).encode('utf8')
+                            for kp in self.known_peers:
+                                if not kp == address[0]:
+                                    sending_socket.sendto(message_to_send,(kp,10004))
+                        else:
+                            # enviar mensagem INFORM a dizer que não foi possível encontrar o ficheiro!
+                            message_to_send = {
+                                "type" : "FILE_INFORM",
+                                "mid" : message_id,
+                                "file_name" : requested_file,
+                                "message" : "File could not be found in the network!"
+                            }
+                            sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
+                            message_to_send = json.dumps(message_to_send).encode('utf8')
+                            sending_socket.sendto(message_to_send,(address[0],10004))
+
                     else:
                         sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
                         self.add_interest(requested_file,address[0])
@@ -459,9 +479,20 @@ class Peer:
                 elif message["type"] == "FILE_UPDATE":
                     peer = address[0]
                     self.update_files(message,peer)
+                elif message["type"] == "FILE_INFORM":
+                    peer = self.interests_table["file_name"][0]
+                    if peer == 'self':
+                        del self.interests_table["file_name"][0]
+                        print(message["message"])
+                    else:
+                        del self.interests_table["file_name"][0]
+                        sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
+                        message = json.dumps(message).encode('utf8')
+                        sending_socket.send(message,(peer,10004))
                 else:
                     pass
 
+    # Submeter um ficheiro para a rede P2P
     def file_submit(self):
         try:
             file_path = input("Insira o caminho até ao ficheiro que pretende submeter para a rede P2P:")
@@ -475,13 +506,13 @@ class Peer:
                 print('O caminho que inseriu não indica um ficheiro!')
         except EOFError:
             pass
-        # Ao submeter o ficheiro, deve ser acrescentado ao array files, que são os ficheiros deste peer.
-        # A flag updated_files deve ser posta a True para que a thread files_updater envie essa info aos known_peers.
     
+    # Geração da message_id
     def random_id(self):
         letters = string.ascii_letters
         return ''.join(random.choice(letters) for i in range(16))
 
+    # Apagar o primeiro interesse da tabela.
     def delete_first_interest(self,file_name):
         assoc_array = self.interests_table.get(file_name)
         del assoc_array[0]
@@ -490,6 +521,7 @@ class Peer:
         else:
             del self.interests_table[file_name]
     
+    # Coletar o interesse mais antigo existente na tabela
     def get_first_interest(self,file_name):
         assoc_array = self.interests_table.get(file_name)
         if assoc_array == None:
@@ -497,6 +529,7 @@ class Peer:
         else:
             return assoc_array[0]
 
+    # Adicionar um interesse à tabela
     def add_interest(self,file_name,peer):
         assoc_array = self.interests_table.get(file_name)
         if assoc_array == None:
@@ -507,6 +540,7 @@ class Peer:
             assoc_array.append(peer)
             self.interests_table[file_name] = assoc_array
 
+    # Sair da rede Peer to Peer.
     def p2p_exit(self):
         self.out = True
         raise SystemExit()
