@@ -11,6 +11,8 @@ import string
 
 # Do que faltar:
 # - Ter em atenção o tamanho do ficheiro a receber (dividir em chunks)
+# Deve ser a única coisa que falta.
+# O resto aparentemente está tudo implementado. Falta testar direitinho.
 
 
 class Peer:
@@ -23,18 +25,17 @@ class Peer:
         self.max_ttl = 3
         self.out = False
         self.known_peers = []
-        self.connections = {}
-        self.connection_maintainer = dict()
+        self.connections = dict() # known_peer -> connection info
+        self.connection_maintainer = dict() # known_peer -> alive_messages_received
         self.files = dict() # file_name -> file_path
         self.temporary_updater = []
-        self.updated_files = False
-        self.interests_table = dict()
-        self.routing_table = dict()
-        self.pending_transfers = dict()
+        self.updated_files = False 
+        self.interests_table = dict() # file_name -> interested_peer
+        self.routing_table = dict() # file_name -> peer_to_ask
+        self.pending_transfers = dict() # peer_to_transfer -> message
     
     # Função que gere o funcionamento de um Peer
     def peer_manager(self):
-        #Gerenciar as tarefas do peer
         self.IP = socket.gethostbyname(socket.gethostname())
         self.connect()
         mainmenu_thread = Thread(target=self.mainmenu)
@@ -67,13 +68,10 @@ class Peer:
 
     # Função de conexão de um peer a 3 known_peers
     def connect(self):
-        # NÃO ESTÁ A FAZER OS TTLS TODOS. SÓ FAZ PARA OS VIZINHOS
         for i in range(1,self.max_ttl + 1):
-            # Criar uma socket e enviar pedido de conexão para os vizinhos a distância i
             sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
             sock.setsockopt(socket.IPPROTO_IP,socket.IP_MULTICAST_TTL,i)
             sock.sendto("P2PConnectionMANET".encode('utf8'),(self.MCAST_GROUP,self.MCAST_PORT))
-            # Iniciar o ciclo para escuta de respostas
             receiving_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
             receiving_socket.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)   
             receiving_socket.settimeout(0.1*i) #timeout de 100ms multiplicado pelo ttl atual
@@ -137,7 +135,6 @@ class Peer:
             message = message.decode('utf8')
             message = message.split(';')
             if message[0] == "ALIVE":
-            # As restantes componentes recebidas na mensagem alive serão atualizações de ficheiros.
                 self.connection_maintainer[address[0]].append(message[0])
 
     # Função que apaga um peer dos peers conectados
@@ -151,8 +148,6 @@ class Peer:
 
     #Função que, periodicamente, troca mensagens com os seus known_peers com o objetivo de avaliar o estado da sua ligação
     def maintain_connection(self):
-        # Alterar a forma de manutenção da conexão:
-        # Nesta fase, cada peer também deve enviar informação atualizada dos ficheiros que tem e conhece.
         while(True): 
             sleep(5)
             if len(self.known_peers) < 3: self.connect()   
@@ -196,10 +191,6 @@ class Peer:
 
     #Esta poderá ser a função de main_menu do peer.
     def mainmenu(self):
-        # Deverá poder ver os peers a que está conectado.
-        # Informação alive e tries.
-        # Ficheiros que pode pedir.
-        # Ficheiros que pode enviar.
         switcher = {
             1: self.conn_peers,
             2: self.conn_info,
@@ -251,9 +242,8 @@ class Peer:
             print("\t Alive Messages Failed -> " + str(self.connections[self.known_peers[i]]["tries"]) + ".")
             print("\n")
     
-    # Função de extracção de conhecimento dos ficheiros conhecidos
+    # Função de extracção de conhecimento dos ficheiros conhecidos e impressão na consola.
     def known_files(self):
-        # Esta função apenas apresenta os ficheiros conhecidos na consola.
         print("CONTENT  -->  PEER")
         for key,value in self.routing_table.items():
             print(key + "  -->  " + value)
@@ -267,9 +257,8 @@ class Peer:
             if temp == None or temp != 'self':
                 self.routing_table[file] = peer
     
-    # Função de envio de atualizações
+    # Função de envio de atualizações de ficheiros
     def files_updater(self):
-        # Função que verifica de 5 em 5 segundos se existem atualizacoes de ficheiros a enviar aos known_peers.
         while(True):
             sleep(5)
             if self.updated_files :
@@ -386,7 +375,6 @@ class Peer:
                     requested_file = message["file_name"]
                     routing_info = self.routing_table.get(requested_file)
                     if routing_info == 'self':
-                        # ler dados do ficheiro : self.files[requested_file] é o path para o ficheiro
                         if os.path.isfile(self.files[requested_file]):
                             content_file = open(self.files[requested_file],"r")
                             content = content_file.read()
@@ -402,7 +390,18 @@ class Peer:
                         else:
                             # Enviar mensagem INFORM a dizer que este peer já não possui o ficheiro
                             # Ou secalhar pedir o ficheiro aos outros known_peers.
-                            pass
+                            # Atualizar as routing tables de todos os peers quando isto acontece.
+                            # A mensagem é do tipo FILE_INFORM
+                            # Mas se tiver uma mensagem do tipo = "FILE_NON_EXISTENT" devem ser informados os peers para retirarem da routing table a associação.
+                            message_to_send = {
+                                "type" : "FILE_INFORM",
+                                "mid" : message_id,
+                                "file_name" : requested_file,
+                                "message" : "FILE_NON_EXISTENT"
+                            }
+                            message_to_send = json.dumps(message_to_send).encode('utf8')
+                            sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
+                            sending_socket.sendto(message_to_send,(address[0],10004))
                     elif routing_info == None :
                         flooding_counter = int(message["flooding_counter"])
                         if flooding_counter < 5:
@@ -420,7 +419,6 @@ class Peer:
                                 if not kp == address[0]:
                                     sending_socket.sendto(message_to_send,(kp,10004))
                         else:
-                            # enviar mensagem INFORM a dizer que não foi possível encontrar o ficheiro!
                             message_to_send = {
                                 "type" : "FILE_INFORM",
                                 "mid" : message_id,
@@ -482,9 +480,16 @@ class Peer:
                 elif message["type"] == "FILE_INFORM":
                     peer = self.interests_table["file_name"][0]
                     if peer == 'self':
-                        del self.interests_table["file_name"][0]
-                        print(message["message"])
+                        if message["message"] == "FILE_NON_EXISTENT":
+                            print('O ficheiro já não se encontra no mesmo peer que estava.')
+                            del self.routing_table[message["file_name"]]
+                            del self.interests_table[message["file_name"]][0]
+                        else:
+                            del self.interests_table[message["file_name"]][0]
+                            print(message["message"])
                     else:
+                        if message["message"] == "FILE_NON_EXISTENT":
+                            del self.routing_table[message["file_name"]]
                         del self.interests_table["file_name"][0]
                         sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
                         message = json.dumps(message).encode('utf8')
