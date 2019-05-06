@@ -18,18 +18,18 @@ import string
 class Peer:
 
     def __init__(self):
-        self.MCAST_GROUP = '224.0.2.15'
-        self.MCAST_PORT = 10000
-        self.peers_connected = 0
-        self.needed_peers = 3
-        self.max_ttl = 3
-        self.out = False
-        self.known_peers = []
+        self.MCAST_GROUP = '224.0.2.15' # Endereço do grupo multicast para onde são enviados e de onde são recebidos pedidos de conexão.
+        self.MCAST_PORT = 10000 # Porta de escuta de pedidos de conexão.
+        self.peers_connected = 0 # peers conetados com este peer atualmente.
+        self.needed_peers = 3 # peers necessários/adequados para manter conexão na rede P2P.
+        self.max_ttl = 3 # ttl máximo para envio da mensagem de conexão.
+        self.out = False # Variável de indicação para saber se é para terminar ou não o funcionamento do peer.
+        self.known_peers = [] # peers conhecidos/conetados.
         self.connections = dict() # known_peer -> connection info
         self.connection_maintainer = dict() # known_peer -> alive_messages_received
         self.files = dict() # file_name -> file_path
-        self.temporary_updater = []
-        self.updated_files = False 
+        self.temporary_updater = [] # Array que guarda atualizações de ficheiros que devem ficar definitivas na próxima iteração.
+        self.updated_files = False # Variável que indica se é necessário mandar atualizações de ficheiros ou não.
         self.interests_table = dict() # file_name -> interested_peer
         self.routing_table = dict() # file_name -> peer_to_ask
         self.pending_transfers = dict() # peer_to_transfer -> message
@@ -121,7 +121,6 @@ class Peer:
                         sending_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
                         for transfer in peer_pending_transfers:
                             sending_socket.sendto(transfer,(kp,10004))
-                            # receber confirmação do envio.
 
             if len(self.known_peers) < self.needed_peers:
                 self.connect()
@@ -150,7 +149,7 @@ class Peer:
     def maintain_connection(self):
         while(True): 
             sleep(5)
-            if len(self.known_peers) < 3: self.connect()   
+            if len(self.known_peers) < self.needed_peers: self.connect()   
             sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
             lock = Lock()
             lock.acquire()
