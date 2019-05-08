@@ -9,12 +9,6 @@ from threading import Lock
 import random
 import string
 
-# Do que faltar:
-# - Ter em atenção o tamanho do ficheiro a receber (dividir em chunks)
-# Deve ser a única coisa que falta.
-# O resto aparentemente está tudo implementado. Falta testar direitinho.
-
-
 class Peer:
 
     def __init__(self):
